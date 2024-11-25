@@ -16,7 +16,7 @@ The code is shit, it was hastily written for one-off use.
 This script has been adapted to work in version 2.1.27.36 of teampass 2 from the original code.
 It is necessary to write the DB password into the code by replacing `DBPASSWORD`.
 
-It is necessary to write the DB password into the code by replacing `sources/main.functions.php`:
+It is also necessary to comment the following part of code in the file `sources/main.functions.php`:
 
 ```
 //if (!isset($_SESSION['CPM']) || $_SESSION['CPM'] != 1) {
