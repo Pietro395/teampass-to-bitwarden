@@ -13,15 +13,16 @@ The code is shit, it was hastily written for one-off use.
 
 ---
 
-# Экспорт из teampass
+This script has been adapted to work in version 2.1.27.36 of teampass 2 from the original code.
+It is necessary to write the DB password into the code by replacing `DBPASSWORD`.
 
-Скрипт экспорта в teampass.
+It is necessary to write the DB password into the code by replacing `sources/main.functions.php`:
 
-Заливаем на сервер в `sources/export.php`, логинимся в основной веб-морде, и
-открываем страницу (типа https://example.com/sources/export.php).
+```
+//if (!isset($_SESSION['CPM']) || $_SESSION['CPM'] != 1) {
+//    die('Hacking attempt...');
+//}
+```
 
-Копируем полученный JSON и импортируем в импорте организации (не своём личном
-импорте!), используя формат `Bitwarden (JSON)`.
 
-Код дрянь, писался наспех на один раз.
 
