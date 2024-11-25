@@ -1,23 +1,30 @@
 <?php
 
-require_once 'sessions.php';
+require_once 'SecureHandler.php';
 session_start();
 
-// No time limit
-set_time_limit(0);
+// Load config
+if (file_exists('../includes/config/tp.config.php')) {
+    include_once '../includes/config/tp.config.php';
+} elseif (file_exists('./includes/config/tp.config.php')) {
+    include_once './includes/config/tp.config.php';
+} else {
+    throw new Exception("Error file '/includes/config/tp.config.php' not exists", 1);
+}
 
-global $k, $settings;
+require_once $SETTINGS['cpassman_dir'].'/includes/config/settings.php';
+require_once $SETTINGS['cpassman_dir'].'/includes/config/tp.config.php';
 
-include $_SESSION['settings']['cpassman_dir'].'/includes/settings.php';
+include_once $SETTINGS['cpassman_dir'].'/install/tp.functions.php';
+require_once 'main.functions.php'; //Comment hacking attemp on file mail.functions.php
 
-require_once $_SESSION['settings']['cpassman_dir'].'/sources/main.functions.php';
-require_once $_SESSION['settings']['cpassman_dir'].'/sources/SplClassLoader.php';
-
-// connect to DB
-require_once $_SESSION['settings']['cpassman_dir'].'/includes/libraries/Database/Meekrodb/db.class.php';
+// connect to the server
+require_once $SETTINGS['cpassman_dir'].'/includes/libraries/Database/Meekrodb/db.class.php';
 
 header('Content-Type: application/json; charset=utf-8');
+echo $server, $user, $pass, $database, $port;
 
+$pass = 'DBPASSWORD'; //Insert DB Password
 DB::$host = $server;
 DB::$user = $user;
 DB::$password = $pass;
@@ -27,7 +34,6 @@ DB::$encoding = $encoding;
 DB::$error_handler = 'db_error_handler';
 
 $link = mysqli_connect($server, $user, $pass, $database, $port);
-$link->set_charset($encoding);
 
 function uuid() {
 	$data = PHP_MAJOR_VERSION < 7 ? openssl_random_pseudo_bytes(16) : random_bytes(16);
@@ -102,7 +108,7 @@ function utf8($text) {
 }
 
 foreach ($rows as $row) {
-	$pw = cryption($row['pw'], SALT, $row['pw_iv'], "decrypt");
+	$pw = cryption($row['pw'], "", "decrypt");
 
 	$collection = get_full_title($row['id_tree']);
 
@@ -123,7 +129,7 @@ foreach ($rows as $row) {
 		'login' => [
 			'uris' => extract_uris($row['label'] . ' ' . $row['description']),
 			'username' => utf8($row['login']),
-			'password' => utf8($pw),
+			'password' => utf8($pw['string']),
 		],
 	];
 }
