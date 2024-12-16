@@ -22,7 +22,6 @@ require_once 'main.functions.php'; //Comment hacking attemp on file mail.functio
 require_once $SETTINGS['cpassman_dir'].'/includes/libraries/Database/Meekrodb/db.class.php';
 
 header('Content-Type: application/json; charset=utf-8');
-echo $server, $user, $pass, $database, $port;
 
 $pass = 'DBPASSWORD'; //Insert DB Password
 DB::$host = $server;
