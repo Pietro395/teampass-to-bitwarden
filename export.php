@@ -22,9 +22,9 @@ require_once 'main.functions.php'; //Comment hacking attemp on file mail.functio
 require_once $SETTINGS['cpassman_dir'].'/includes/libraries/Database/Meekrodb/db.class.php';
 
 header('Content-Type: application/json; charset=utf-8');
-echo $server, $user, $pass, $database, $port;
+// echo $server, $user, $pass, $database, $port;
 
-$pass = 'DBPASSWORD'; //Insert DB Password
+$pass = 'DBPASSWORD'; //Insert your DB Password
 DB::$host = $server;
 DB::$user = $user;
 DB::$password = $pass;
@@ -59,6 +59,7 @@ $rows = DB::query($sql);
 $result = [];
 $collections = [];
 $organizationId = 'b0d60ffb-79fc-4933-8c60-2dbbb0a8d811';
+$bitwardenCollections = [];  // Initialize the array for the BitwardenCollection
 
 function get_full_title($treeId) {
 	$name = '';
@@ -108,34 +109,98 @@ function utf8($text) {
 }
 
 foreach ($rows as $row) {
-	$pw = cryption($row['pw'], "", "decrypt");
+    $pw = cryption($row['pw'], "", "decrypt");
+    $full_title = get_full_title($row['id_tree']);  // Obtain the full path
 
-	$collection = get_full_title($row['id_tree']);
+    // Slices the title in a folder
+    $folders = explode('/', $full_title);
+    $currentPath = '';
+    $parentCollectionId = null;
 
-	if (!$collections[$collection]) {
-		$collections[$collection] = [
-			'id' => uuid(),
-			'organizationId' => $organizationId,
-			'name' => $collection,
-		];
-	}
+    foreach ($folders as $folder) {
+        $currentPath .= $folder . '/';
 
-	$result[] = [
-		'type' => 1,
-		'organizationId' => $organizationId,
-		'collectionIds' => [$collections[$collection]['id']],
-		'name' => utf8($row['label']),
-		'notes' => utf8(strip_tags(html_entity_decode(br2nl($row['description'])))),
-		'login' => [
-			'uris' => extract_uris($row['label'] . ' ' . $row['description']),
-			'username' => utf8($row['login']),
-			'password' => utf8($pw['string']),
-		],
-	];
+        // Remove the final slash to confront it with the complete path
+        $currentFolderPath = rtrim($currentPath, '/');
+
+        // If the current collection doesn't exists, it creates it
+        if (!isset($collections[$currentFolderPath])) {
+            $parentId = $parentCollectionId;
+            $collectionId = uuid();
+
+            $collections[$currentFolderPath] = [
+                'id' => $collectionId,
+                'organizationId' => $organizationId,
+                'name' => $folder,
+                'externalId' => $parentId,
+            ];
+
+            // Add the collection in a Bitwarden format
+            $bitwardenCollections[] = [
+                'id' => $collectionId,
+                'organizationId' => $organizationId,
+                'name' => $currentFolderPath,  // Use the complete path as name
+                'externalId' => $parentId,
+            ];
+
+            // Updates the parentCollectionId for the next iteration
+            $parentCollectionId = $collectionId;
+        } else {
+            // If the collection already exists, use the existing ID
+            $parentCollectionId = $collections[$currentFolderPath]['id'];
+        }
+    }
+
+    // Find the inner path
+    $deepestFolderPath = $full_title;
+    $deepestCollectionId = $collections[$deepestFolderPath]['id'];
+
+    // Add the item at the inner path
+    $result[] = [
+        'type' => 1,
+        'organizationId' => $organizationId,
+        'collectionIds' => [$deepestCollectionId],
+        'name' => utf8($row['label']),
+        'notes' => utf8(strip_tags(html_entity_decode(br2nl($row['description'])))),
+        'login' => [
+            'uris' => extract_uris($row['label'] . ' ' . $row['description']),
+            'username' => utf8($row['login']),
+            'password' => utf8($pw['string']),
+        ],
+    ];
 }
 
-echo json_encode([
-	'items' => $result,
-	'collections' => array_values($collections),
-]);
+// Extract only the required fields for the Bitwarden JSON
+$bitwardenCollections = array_map(function ($collection) {
+    return [
+        'id' => $collection['id'],
+        'organizationId' => $collection['organizationId'],
+        'name' => $collection['name'],
+        // If necessary, you add the 'externalId' field to point at the parent folder
+        // 'externalId' => $collection['externalId'],
+    ];
+}, $bitwardenCollections);
 
+// Extracts only the necessary data in the items
+$bitwardenItems = array_map(function ($item) {
+    return [
+        'type' => $item['type'],
+        'organizationId' => $item['organizationId'],
+        'collectionIds' => $item['collectionIds'],
+        'name' => $item['name'],
+        'notes' => $item['notes'],
+        'login' => $item['login'],
+    ];
+}, $result);
+
+// Prepare the final JSON for Bitwarden
+$bitwardenJson = [
+    'collections' => $bitwardenCollections,
+    'items' => $bitwardenItems,
+];
+
+// Convert the JSON into a string
+$bitwardenJsonString = json_encode($bitwardenJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+// Print or save the JSON file
+echo $bitwardenJsonString;
