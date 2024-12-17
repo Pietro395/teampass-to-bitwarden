@@ -24,5 +24,8 @@ It is also necessary to comment the following part of code in the file `sources/
 //}
 ```
 
+---
 
+This script has now been adapted to now work correctly on the conversion of the TeamPass Folders into the Bitwarden Collections,
+it now respects the hierarchy of each content and uses the correct paths, as well as assigning the Items into the right Collections.
 
